@@ -9,18 +9,50 @@ security:
             entity:
                 class: App\Entity\User
                 property: username
+
+    # explication sur les firewalls : https://symfony.com/doc/current/security/firewall_restriction.html
+    # en gros, un firewall est un ensemble de règles de sécurité qui s'appliquent à un ensemble de routes
+    # ici, on a deux firewalls : dev et main
+    # le firewall dev s'applique à toutes les routes qui commencent par /_ (profiler, wdt, etc) et qui sont donc des routes de debug
+    # le firewall main s'applique à toutes les autres routes
+    # les firewalls sont appliqués dans l'ordre dans lequel ils sont définis
+    # donc ici, le firewall dev est appliqué en premier, puis le firewall main
+    # si une route matche avec le firewall dev, alors le firewall main ne sera pas appliqué
+    # si une route ne matche pas avec le firewall dev, alors le firewall main sera appliqué
+    # les rêgles des firewalls concernent principalement les utilisateurs (authentification, autorisation, etc)
+    # mais on peut aussi y définir des règles de sécurité pour les routes, comme par exemple ici dans le firewall dev :
+    # security: false signifie que les utilisateurs non authentifiés ont le droit d'accéder à toutes les routes qui commencent par /_
+    # La différence avec la section access_control, c'est que les règles de sécurité des firewalls sont appliquées avant le contrôle d'accès
+    # donc si un utilisateur n'est pas autorisé à accéder à une route, il ne pourra pas accéder à la route, 
+    # même si l'access control lui donne accès. Egalement, on ne retrouve pas dans l'access control les règles de sécurité concernant les utilisateurs.
+    # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
         main:
+            # la ligne lazy: true permet de ne pas charger l'utilisateur en session à chaque requête mais seulement quand on en a besoin
+            # si on n'utilise pas lazy: true, l'utilisateur sera chargé en session à chaque requête, même si on n'en a pas besoin
             lazy: true
+
+            # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
+            # on utilise le provider défini plus haut pour charger l'utilisateur en session
             provider: app_user_provider
+
+            # on utilise la classe App\Security\AppAuthenticator pour gérer l'authentification
             custom_authenticator: App\Security\AppAuthenticator
             logout:
                 path: app_logout
                 # where to redirect after logout
                 # target: app_any_route
+
+            # pour mettre en place une protection contre le brute force sur le login, on peut utiliser la ligne login_throttling
+            # https://symfony.com/doc/current/security/login_throttling.html
+            # ici, on définit que l'utilisateur a 2 essais pour se connecter, et qu'il doit attendre 30 secondes
+            # avant de pouvoir réessayer. Pour utiliser cette fonctionnalité, il faut installer le package symfony/rate-limiter
+            login_throttling:
+                max_attempts: 2
+                interval: 30
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#the-firewall
@@ -30,11 +62,37 @@ security:
 
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
+    # https://symfony.com/doc/current/security/access_control.html
+    # dans la section access_control, on définit des règles de sécurité pour les routes
+    # ici, on définit que les utilisateurs non authentifiés n'ont pas le droit d'accéder aux routes qui commencent par /admin
+    # et que les utilisateurs authentifiés ont le droit d'accéder à toutes les routes
+    # on peut aussi définir des règles de sécurité pour les utilisateurs, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin
+    # - { path: ^/profile, roles: ROLE_USER } : les utilisateurs qui ont le rôle ROLE_USER ont le droit d'accéder aux routes qui commencent par /profile
+    # https://symfony.com/doc/current/security/access_control.html#roles
+    # on peut aussi définir des règles de sécurité pour les méthodes, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN, methods: [POST, PUT, DELETE] } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin en POST, PUT et DELETE
+    # https://symfony.com/doc/current/security/access_control.html#http-methods
+    # on peut aussi définir des règles de sécurité pour les adresses IP, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN, ips: 127.0.0.1 } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin si leur adresse IP est 127.0.0.1
+    # https://symfony.com/doc/current/security/access_control.html#ip-addresses
+    # on peut aussi définir des règles de sécurité pour les hôtes, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN, hosts: example.com } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin si leur hôte est example.com
+    # https://symfony.com/doc/current/security/access_control.html#hostnames
+    # on peut aussi définir des règles de sécurité pour les méthodes, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN, requires_channel: https } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin si le protocole utilisé est https
+    # https://symfony.com/doc/current/security/access_control.html#channel-security
+    # on peut aussi définir des règles de sécurité personnalisées, comme par exemple :
+    # - { path: ^/admin, roles: ROLE_ADMIN, security: is_granted('ROLE_ADMIN') } : les utilisateurs qui ont le rôle ROLE_ADMIN ont le droit d'accéder aux routes qui commencent par /admin si la méthode is_granted('ROLE_ADMIN') renvoie true
+    # ces règles de sécurité personnalisées utilisent l'expression language de Symfony, qui permet d'écrire des expressions pour vérifier des conditions
+    # https://symfony.com/doc/current/security/access_control.html#custom-access-checks
     access_control:
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 
+    # access_decision_manager: c'est le service qui permet de décider si un utilisateur a le droit d'accéder à une ressource ou non
     access_decision_manager:
+        # strategy: c'est la stratégie utilisée par le service access_decision_manager pour décider si un utilisateur a le droit d'accéder à une ressource ou non
         strategy: unanimous
 
 when@test:
