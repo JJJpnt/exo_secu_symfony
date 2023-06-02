@@ -34,6 +34,9 @@ security:
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 
+    access_decision_manager:
+        strategy: unanimous
+
 when@test:
     security:
         password_hashers:

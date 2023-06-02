@@ -79,6 +79,7 @@ class RegistrationFormType extends AbstractType
         ]);
     }
 
+    // Fonction de validation custom, pour être utilisée en mode callback (ligne 65 ci dessus)
     public function validateBirthdate($value, ExecutionContextInterface $context) {
         if ($value > new \DateTime()) {
             $context->buildViolation('The birthdate should be in the past')
